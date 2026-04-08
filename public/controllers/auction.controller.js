@@ -76,28 +76,28 @@ angular.module('auctionApp')
             // Listen for live events
             SocketService.on('new-bid', function(data) {
                 if ($scope.auction) {
-                    $scope.auction.current_price = data.amount;
-                    $scope.auction.total_bids++;
+                    $scope.auction.current_price = data.new_price || data.amount;
+                    $scope.auction.total_bids = data.total_bids || ($scope.auction.total_bids + 1);
                 }
                 $scope.bids.unshift({
-                    bidder_name: data.bidder,
+                    bidder_name: data.bidder_name || data.bidder,
                     amount: data.amount,
-                    created_at: data.time,
+                    bid_time: data.timestamp || data.time,
                     is_winning: true
                 });
                 for (let i = 1; i < $scope.bids.length; i++) {
                     $scope.bids[i].is_winning = false;
                 }
-                $scope.showToast('New bid placed by ' + data.bidder + '!');
+                $scope.showToast('New bid placed by ' + (data.bidder_name || data.bidder) + '!');
                 $scope.flashPrice();
             });
 
             SocketService.on('auction-closed', function(data) {
                 if ($scope.auction) {
-                    $scope.auction.current_price = data.amount;
+                    $scope.auction.current_price = data.final_price || data.amount;
                     $scope.auction.status = 'closed';
                 }
-                $scope.showToast('Auction won by ' + data.winner + '!');
+                $scope.showToast('Auction won by ' + (data.winner_name || data.winner) + '!');
                 loadBids();
             });
 

@@ -96,7 +96,7 @@
                                 min="{{ auction.current_price * 1 + 1 }}" step="1" />
                         </div>
                         <button class="btn btn-primary btn-lg btn-full" ng-click="placeBid()"
-                            ng-disabled="bidding || !bidAmount || bidAmount <= auction.current_price">
+                            ng-disabled="bidding || !bidAmount || +bidAmount <= +auction.current_price">
                             {{ bidding ? '⏳ Placing Bid...' : '🔨 Place Bid' }}
                         </button>
                     </div>
