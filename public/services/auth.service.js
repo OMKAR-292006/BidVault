@@ -32,13 +32,13 @@ angular.module('auctionApp')
             return u ? JSON.parse(u) : null;
         };
 
-        this.isLoggedIn = function () {
-            return !!this.getToken();
+        this.isLoggedIn = () => {
+            return !!localStorage.getItem('auction_token');
         };
 
         // ── Auth header for HTTP requests ──────────
-        this.authHeader = function () {
-            return { Authorization: 'Bearer ' + this.getToken() };
+        this.authHeader = () => {
+            return { Authorization: 'Bearer ' + localStorage.getItem('auction_token') };
         };
 
         // ── API calls ──────────────────────────────
