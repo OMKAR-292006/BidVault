@@ -109,7 +109,7 @@ const createAuction = async (req, res) => {
 
         let finalImageUrl = image_url || null;
         if (req.file) {
-            finalImageUrl = '/uploads/' + req.file.filename;
+            finalImageUrl = req.file.path; // Cloudinary returns full URL in path
         }
 
         if (!title || !category_id || !starting_price || !start_time || !end_time) {
@@ -165,7 +165,7 @@ const updateAuction = async (req, res) => {
 
         let finalImageUrl = image_url || null;
         if (req.file) {
-            finalImageUrl = '/uploads/' + req.file.filename;
+            finalImageUrl = req.file.path; // Cloudinary returns full URL in path
         }
 
         const [auctions] = await db.query('SELECT * FROM auction_items WHERE id = ?', [id]);
