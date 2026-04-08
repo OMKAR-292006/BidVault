@@ -1,0 +1,46 @@
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-brand">BIDVAULT</div>
+        <h1 class="auth-title">Create Account</h1>
+        <p class="auth-sub">Join the premier platform for rare items.</p>
+        
+        <div ng-if="error" class="alert alert-error">{{error}}</div>
+
+        <form class="auth-form" ng-submit="register()">
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" ng-model="formData.username" required placeholder="johndoe">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select ng-model="formData.role">
+                        <option value="buyer">Buyer</option>
+                        <option value="seller">Seller</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Email Address</label>
+                <input type="email" ng-model="formData.email" required placeholder="john@example.com">
+            </div>
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" ng-model="formData.password" required placeholder="••••••••">
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" ng-model="formData.confirmPassword" required placeholder="••••••••">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg btn-full" ng-disabled="loading" style="margin-top: 0.5rem;">
+                {{loading ? 'Creating...' : 'Create Account'}}
+            </button>
+        </form>
+        
+        <div class="auth-switch">
+            Already have an account? <a href="#!/login">Sign In</a>
+        </div>
+    </div>
+</div>

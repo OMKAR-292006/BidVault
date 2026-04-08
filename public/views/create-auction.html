@@ -1,0 +1,70 @@
+<div class="form-page">
+    <div class="form-page-header">
+        <h1>List an Item</h1>
+        <p>Provide details to start your auction and attract bidders.</p>
+    </div>
+
+    <div class="form-card">
+        <div ng-if="error" class="alert alert-error">{{error}}</div>
+        <div ng-if="success" class="alert alert-success">{{success}}</div>
+
+        <form class="auction-form" ng-submit="submit()">
+            <div class="form-section-title">Item Details</div>
+            
+            <div class="form-group">
+                <label>Item Title</label>
+                <input type="text" ng-model="formData.title" required placeholder="e.g., Vintage Hasselblad Camera">
+            </div>
+            
+            <div class="form-group">
+                <label>Upload Image</label>
+                <input type="file" file-model="formData.imageFile" accept="image/*" class="form-control" style="padding: 10px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); width: 100%; color: var(--text);">
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Category</label>
+                    <select ng-model="formData.category_id" required>
+                        <option value="" disabled selected>Select a category...</option>
+                        <option ng-repeat="cat in categories" value="{{cat.id}}">{{cat.name}}</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea ng-model="formData.description" rows="5" required placeholder="Describe the item's condition, history, and features..."></textarea>
+            </div>
+
+            <div class="form-section-title" style="margin-top: 1rem;">Pricing & Timing</div>
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Starting Price ({{currency.getCode()}})</label>
+                    <input type="number" ng-model="formData.starting_price" step="0.01" min="0" required placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label>Buy Now Price ({{currency.getCode()}}) (Optional)</label>
+                    <input type="number" ng-model="formData.buy_now_price" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-group">
+                    <label>Start Time (Optional)</label>
+                    <input type="datetime-local" ng-model="formData.start_time">
+                </div>
+                <div class="form-group">
+                    <label>End Time</label>
+                    <input type="datetime-local" ng-model="formData.end_time" required>
+                </div>
+            </div>
+
+            <div class="form-actions" style="margin-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary btn-lg" ng-disabled="loading">
+                    {{loading ? 'Creating...' : 'Launch Auction'}}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

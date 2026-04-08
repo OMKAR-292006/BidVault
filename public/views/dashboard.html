@@ -1,0 +1,86 @@
+<div class="dashboard-page" ng-init="setTab('auctions')">
+    <div class="dashboard-header">
+        <div>
+            <h1>Dashboard</h1>
+            <p class="dash-welcome">Manage your activity and profile.</p>
+        </div>
+        <a href="#!/create-auction" class="btn btn-primary">+ List Item</a>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn" ng-class="{active: activeTab==='auctions'}" ng-click="setTab('auctions')">
+            My Listings <span class="tab-count" ng-if="myAuctions.length">{{myAuctions.length}}</span>
+        </button>
+        <button class="tab-btn" ng-class="{active: activeTab==='bids'}" ng-click="setTab('bids')">
+            My Bids <span class="tab-count" ng-if="myBids.length">{{myBids.length}}</span>
+        </button>
+    </div>
+
+    <div ng-if="loading" class="loading-state">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- My Listings Tab -->
+    <div ng-if="!loading && activeTab==='auctions'">
+        <div ng-if="myAuctions.length === 0" class="empty-state">
+            <div class="empty-icon">📦</div>
+            <h3>No Active Listings</h3>
+            <p>You haven't listed any items for auction yet.</p>
+            <a href="#!/create-auction" class="btn btn-primary" style="margin-top:1rem;">Create First Auction</a>
+        </div>
+        
+        <div class="table-wrap" ng-if="myAuctions.length > 0">
+            <table class="data-table">
+                <tr>
+                    <th>Item Title</th>
+                    <th>Status</th>
+                    <th>Time Left</th>
+                    <th>Highest Bid</th>
+                    <th>Bids</th>
+                    <th>Actions</th>
+                </tr>
+                <tr ng-repeat="a in myAuctions">
+                    <td class="td-title"><a href="#!/auctions/{{a.id}}">{{a.title}}</a></td>
+                    <td><span class="badge-status" ng-class="'status-' + a.status">{{a.status}}</span></td>
+                    <td>{{timeLeft(a.end_time)}}</td>
+                    <td class="td-price">{{a.current_price | localCurrency}}</td>
+                    <td>{{a.total_bids}}</td>
+                    <td class="td-actions">
+                        <button ng-click="deleteAuction(a.id)" class="action-btn danger">Delete</button>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- My Bids Tab -->
+    <div ng-if="!loading && activeTab==='bids'">
+        <div ng-if="myBids.length === 0" class="empty-state">
+            <div class="empty-icon">💰</div>
+            <h3>No Bids Placed</h3>
+            <p>You haven't participated in any auctions yet.</p>
+            <a href="#!/auctions" class="btn btn-primary" style="margin-top:1rem;">Browse Marketplace</a>
+        </div>
+        
+        <div class="table-wrap" ng-if="myBids.length > 0">
+            <table class="data-table">
+                <tr>
+                    <th>Auction Item</th>
+                    <th>My Bid</th>
+                    <th>Date Placed</th>
+                    <th>Status</th>
+                </tr>
+                <tr ng-repeat="b in myBids" ng-class="{'row-winning': b.is_winning}">
+                    <td class="td-title"><a href="#!/auctions/{{b.auction_id}}">{{b.auction_title}}</a></td>
+                    <td class="td-price">{{b.amount | localCurrency}}</td>
+                    <td>{{b.created_at | date:'mediumDate'}}</td>
+                    <td>
+                        <span ng-if="b.is_winning" class="badge-status status-active">Winning</span>
+                        <span ng-if="!b.is_winning" class="badge-status status-cancelled">Outbid</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>

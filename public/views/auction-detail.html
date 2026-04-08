@@ -1,0 +1,160 @@
+<!-- ── Real-time Toast Notification ── -->
+<div class="toast-container" ng-if="toast">
+    <div class="toast toast-{{ toast.type }}">
+        {{ toast.message }}
+    </div>
+</div>
+
+<!-- Loading -->
+<div class="loading-state" ng-if="loading">
+    <div class="spinner"></div>
+    <p>Loading auction...</p>
+</div>
+
+<div class="alert alert-error" ng-if="error">{{ error }}</div>
+
+<!-- Detail Layout -->
+<div class="detail-layout" ng-if="!loading && auction">
+
+    <!-- LEFT: Image + Info ──────────────────── -->
+    <div class="detail-left">
+        <div class="detail-img-wrap">
+            <img ng-if="auction.image_url" ng-src="{{ auction.image_url }}" alt="{{ auction.title }}"
+                class="detail-img" />
+            <div ng-if="!auction.image_url" class="detail-img-placeholder">{{ auction.title[0] }}</div>
+            <span class="card-status status-{{ auction.status }} detail-status">{{ auction.status }}</span>
+        </div>
+
+        <div class="detail-info-card">
+            <div class="detail-category">{{ auction.category_name }}</div>
+            <h1 class="detail-title">{{ auction.title }}</h1>
+            <p class="detail-desc" ng-if="auction.description">{{ auction.description }}</p>
+
+            <div class="detail-meta-grid">
+                <div class="meta-item">
+                    <span class="meta-label">Starting Price</span>
+                    <span class="meta-val">₹{{ auction.starting_price | number:2 }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Total Bids</span>
+                    <span class="meta-val live-count">{{ auction.total_bids }}</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Seller</span>
+                    <span class="meta-val">{{ auction.seller_name }}</span>
+                </div>
+                <div class="meta-item" ng-if="auction.buy_now_price">
+                    <span class="meta-label">Buy Now Price</span>
+                    <span class="meta-val accent">₹{{ auction.buy_now_price | number:2 }}</span>
+                </div>
+            </div>
+
+            <div class="detail-times">
+                <div><span class="meta-label">Starts:</span> {{ auction.start_time | date:'medium' }}</div>
+                <div><span class="meta-label">Ends:</span> {{ auction.end_time | date:'medium' }}</div>
+            </div>
+
+            <!-- Live indicator -->
+            <div class="live-indicator" ng-if="auction.status === 'active'">
+                <span class="live-dot"></span> Live — watching in real time
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Bid Panel + History ─────────── -->
+    <div class="detail-right">
+
+        <!-- Current Price + Countdown -->
+        <div class="bid-panel">
+            <div class="bid-panel-price-label">Current Highest Bid</div>
+
+            <!-- Price flashes amber when updated via socket -->
+            <div class="bid-panel-price" ng-class="{ 'price-flash': priceFlash }">
+                ₹{{ auction.current_price | number:2 }}
+            </div>
+
+            <div class="bid-meta-row">
+                <div class="bid-countdown" ng-if="auction.status === 'active'">⏱ {{ countdown }}</div>
+                <div class="bid-ended" ng-if="auction.status !== 'active'">
+                    {{ auction.status === 'closed' ? '🔒 Auction Closed' : auction.status }}
+                </div>
+                <div class="bid-total">{{ auction.total_bids }} bid(s)</div>
+            </div>
+
+            <!-- ── BID FORM (only if active + logged in) ── -->
+            <div ng-if="auction.status === 'active'">
+
+                <!-- Logged in -->
+                <div ng-if="isLoggedIn()">
+                    <div class="alert alert-success" ng-if="bidMsg">{{ bidMsg }}</div>
+                    <div class="alert alert-error" ng-if="bidError">{{ bidError }}</div>
+
+                    <div class="bid-form">
+                        <div class="bid-input-wrap">
+                            <span class="bid-currency">₹</span>
+                            <input type="number" ng-model="bidAmount" class="bid-input" placeholder="Enter bid amount"
+                                min="{{ auction.current_price * 1 + 1 }}" step="1" />
+                        </div>
+                        <button class="btn btn-primary btn-lg btn-full" ng-click="placeBid()"
+                            ng-disabled="bidding || !bidAmount || bidAmount <= auction.current_price">
+                            {{ bidding ? '⏳ Placing Bid...' : '🔨 Place Bid' }}
+                        </button>
+                    </div>
+                    <p class="bid-hint">Must be higher than ₹{{ auction.current_price | number:2 }}</p>
+                </div>
+
+                <!-- Not logged in -->
+                <div ng-if="!isLoggedIn()" class="login-prompt">
+                    <p>Want to bid on this item?</p>
+                    <a href="#!/login" class="btn btn-primary btn-full">Login to Bid</a>
+                    <a href="#!/register" class="btn btn-ghost btn-full" style="margin-top:8px;">Create Account</a>
+                </div>
+            </div>
+
+            <!-- Auction closed state -->
+            <div ng-if="auction.status === 'closed'" class="closed-panel">
+                <div ng-if="auction.winner_name" class="winner-box">
+                    🏆 Won by <strong>{{ auction.winner_name }}</strong>
+                    <div class="winner-price">Final Price: ₹{{ auction.current_price | number:2 }}</div>
+                </div>
+                <div ng-if="!auction.winner_name" class="no-winner">
+                    No bids were placed on this auction.
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Bid History -->
+        <div class="bid-history-card">
+            <div class="bh-header">
+                <h3 class="bh-title">
+                    Live Bid History
+                    <span class="bh-count">({{ bids.length }})</span>
+                </h3>
+                <span class="live-badge-sm" ng-if="auction.status === 'active'">● LIVE</span>
+            </div>
+
+            <div class="empty-state-sm" ng-if="bids.length === 0">
+                No bids yet — be the first!
+            </div>
+
+            <div class="bid-list">
+                <div class="bid-row" ng-repeat="b in bids" ng-class="{ 'bid-row-winning': b.is_winning }"
+                    ng-animate="'bid-row-enter'">
+
+                    <div class="bid-row-left">
+                        <div class="bid-avatar">{{ b.bidder_name[0].toUpperCase() }}</div>
+                        <div>
+                            <div class="bid-name">
+                                {{ b.bidder_name }}
+                                <span class="winning-tag" ng-if="b.is_winning">● Highest</span>
+                            </div>
+                            <div class="bid-time">{{ b.bid_time | date:'MMM d, h:mm:ss a' }}</div>
+                        </div>
+                    </div>
+                    <div class="bid-amount">₹{{ b.amount | number:2 }}</div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /detail-right -->
+</div><!-- /detail-layout -->

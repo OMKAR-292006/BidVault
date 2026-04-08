@@ -1,0 +1,57 @@
+<section class="hero">
+    <div class="hero-graphic">
+        <div class="hero-circle c1"></div>
+        <div class="hero-circle c2"></div>
+        <div class="hero-circle c3"></div>
+    </div>
+    <div class="hero-inner">
+        <span class="hero-tag">Live Auction Platform</span>
+        <h1 class="hero-title">Bid on <span>Rare</span> <br/>& Exclusive Items</h1>
+        <p class="hero-sub">The premier destination for buying and selling unique assets, from vintage collectables to modern electronics.</p>
+        <div class="hero-actions">
+            <a href="#!/auctions" class="btn btn-primary btn-lg">Explore Marketplace</a>
+            <a href="#!/register" class="btn btn-ghost btn-lg" ng-if="!isLoggedIn()">Create Account</a>
+        </div>
+    </div>
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <h2>Live Now <span class="live-badge" style="margin-left: 10px;">● LIVE</span></h2>
+        <a href="#!/auctions" class="view-all">View all auctions →</a>
+    </div>
+
+    <div ng-if="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading active auctions...</p>
+    </div>
+
+    <div ng-if="!loading && featuredAuctions.length === 0" class="empty-state">
+        <div class="empty-icon">🏖️</div>
+        <h3>No active auctions</h3>
+        <p>Check back later or <a href="#!/create-auction">list an item</a> yourself!</p>
+    </div>
+
+    <div class="auction-grid" ng-if="!loading && featuredAuctions.length > 0">
+        <a ng-repeat="auction in featuredAuctions" href="#!/auctions/{{auction.id}}" class="auction-card">
+            <div class="card-img-wrap">
+                <img ng-if="auction.image_url" ng-src="{{auction.image_url}}" class="card-img">
+                <div ng-if="!auction.image_url" class="card-img-placeholder">{{auction.title.charAt(0).toUpperCase()}}</div>
+                <span class="card-status status-active">Active</span>
+            </div>
+            <div class="card-body">
+                <div class="card-category">{{auction.category_name}}</div>
+                <h3 class="card-title">{{auction.title}}</h3>
+                <div class="card-price-row">
+                    <div>
+                        <div class="card-label">Current Bid</div>
+                        <div class="card-price">{{auction.current_price | localCurrency}}</div>
+                    </div>
+                    <div class="card-meta-right">
+                        <div class="card-timer">{{timeLeft(auction.end_time)}}</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</section>

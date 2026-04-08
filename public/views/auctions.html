@@ -1,0 +1,56 @@
+<div class="page-header">
+    <h1>Marketplace</h1>
+</div>
+
+<div class="filters-bar">
+    <div class="search-group">
+        <div class="filter-group">
+            <input type="text" ng-model="filters.search" placeholder="Search items..." ng-change="load()">
+        </div>
+    </div>
+    <div class="filter-group">
+        <label>Status</label>
+        <select ng-model="filters.status" ng-change="load()">
+            <option value="active">Active Now</option>
+            <option value="all">All Auctions</option>
+            <option value="closed">Closed</option>
+        </select>
+    </div>
+</div>
+
+<div ng-if="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading auctions...</p>
+</div>
+
+<div ng-if="!loading && auctions.length === 0" class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h3>No items found</h3>
+    <p>Try adjusting your search filters.</p>
+</div>
+
+<div ng-if="!loading && auctions.length > 0">
+    <p class="results-count">Showing {{auctions.length}} results</p>
+    <div class="auction-grid" style="margin-top: 1rem;">
+        <a ng-repeat="auction in auctions" href="#!/auctions/{{auction.id}}" class="auction-card">
+            <div class="card-img-wrap">
+                <img ng-if="auction.image_url" ng-src="{{auction.image_url}}" class="card-img">
+                <div ng-if="!auction.image_url" class="card-img-placeholder">{{auction.title.charAt(0).toUpperCase()}}</div>
+                <span class="card-status" ng-class="'status-' + auction.status">{{auction.status}}</span>
+            </div>
+            <div class="card-body">
+                <div class="card-category">{{auction.category_name}}</div>
+                <h3 class="card-title">{{auction.title}}</h3>
+                <div class="card-price-row">
+                    <div>
+                        <div class="card-label">Current Bid</div>
+                        <div class="card-price">{{auction.current_price | localCurrency}}</div>
+                    </div>
+                    <div class="card-meta-right">
+                        <div class="card-timer">{{timeLeft(auction.end_time)}}</div>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
