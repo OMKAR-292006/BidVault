@@ -99,6 +99,33 @@
                         </button>
                     </div>
                     <p class="bid-hint">Must be higher than ₹{{ auction.current_price | number:2 }}</p>
+
+                    <!-- ── Bid Buddy (Auto-Bidder) ── -->
+                    <div class="auto-bid-section">
+                        <div class="auto-bid-header" ng-click="showAutoBid = !showAutoBid" style="cursor:pointer;">
+                            🤖 Bid Buddy (Auto-Bidder)
+                            <span style="font-size:0.75rem; color:var(--text-muted); margin-left:6px;">{{ autoBid ? '● Active' : 'Set it & forget it' }}</span>
+                        </div>
+                        <div ng-show="showAutoBid" class="auto-bid-body">
+                            <div ng-if="!autoBid">
+                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:8px;">We'll automatically outbid others up to your max. You only pay what's needed to win.</p>
+                                <div class="bid-input-wrap" style="margin-bottom:8px;">
+                                    <span class="bid-currency">₹</span>
+                                    <input type="number" ng-model="autoBidMax" class="bid-input" placeholder="Your max amount" step="1" />
+                                </div>
+                                <button class="btn btn-ghost btn-full" ng-click="activateAutoBid()">Activate Bid Buddy</button>
+                            </div>
+                            <div ng-if="autoBid" class="auto-bid-active">
+                                <span>🤖 Active — max ₹{{ autoBid.max_amount | number:2 }}</span>
+                                <button class="btn btn-ghost" style="font-size:0.75rem; padding:4px 10px;" ng-click="deactivateAutoBid()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Snipe protection notice -->
+                    <div class="snipe-notice" ng-if="sniped">
+                        ⏰ Auction extended by 2 min — snipe protection activated!
+                    </div>
                 </div>
 
                 <!-- Not logged in -->

@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="css/style.css" />
 </head>
 
-<body>
+<body class="light-theme">
 
     <!-- ── NAVBAR ── -->
     <nav class="navbar" ng-controller="NavController">
@@ -27,7 +27,7 @@
 
         <div class="nav-links">
             <a href="#!/auctions">Auctions</a>
-            <a href="#!/auctions" class="live-badge">● LIVE</a>
+            <a href="#!/auctions?status=active" class="live-badge">● LIVE</a>
             <button class="btn btn-ghost" ng-click="toggleTheme()" style="padding: 0.25rem 0.5rem; font-size: 1.25rem;">
                 {{ isLightMode ? '🌙' : '☀️' }}
             </button>

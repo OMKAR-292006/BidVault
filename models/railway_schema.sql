@@ -124,3 +124,16 @@ FROM users u
 JOIN bids b ON b.bidder_id = u.id
 GROUP BY u.id, u.username, u.full_name
 ORDER BY total_amount_bid DESC;
+
+-- ── AUTO BIDS (Bid Buddy) ─────────────────────
+CREATE TABLE IF NOT EXISTS auto_bids (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  auction_id  INT           NOT NULL,
+  user_id     INT           NOT NULL,
+  max_amount  DECIMAL(10,2) NOT NULL,
+  is_active   BOOLEAN       DEFAULT TRUE,
+  created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (auction_id) REFERENCES auction_items(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id)    REFERENCES users(id)         ON DELETE CASCADE,
+  UNIQUE KEY unique_auto_bid (auction_id, user_id)
+);

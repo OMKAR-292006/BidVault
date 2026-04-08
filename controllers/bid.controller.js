@@ -85,7 +85,21 @@ const placeBid = async (req, res) => {
             [amount, auction_id]
         );
 
-        // ── 11. Check buy-now price hit ────────────
+        // ── 11. SNIPE PROTECTION — extend if bid in last 2 minutes ──
+        let sniped = false;
+        const endTime = new Date(auction.end_time);
+        const now = new Date();
+        const secondsLeft = (endTime - now) / 1000;
+        if (secondsLeft <= 120 && secondsLeft > 0) {
+            const newEndTime = new Date(now.getTime() + 2 * 60 * 1000);
+            const pad = n => n.toString().padStart(2, '0');
+            const formatted = `${newEndTime.getFullYear()}-${pad(newEndTime.getMonth()+1)}-${pad(newEndTime.getDate())} ${pad(newEndTime.getHours())}:${pad(newEndTime.getMinutes())}:${pad(newEndTime.getSeconds())}`;
+            await db.query('UPDATE auction_items SET end_time = ? WHERE id = ?', [formatted, auction_id]);
+            auction.end_time = newEndTime.toISOString();
+            sniped = true;
+        }
+
+        // ── 12. Check buy-now price hit ────────────
         let auctionWon = false;
         if (auction.buy_now_price && Number(amount) >= Number(auction.buy_now_price)) {
             await db.query(
@@ -95,11 +109,9 @@ const placeBid = async (req, res) => {
             auctionWon = true;
         }
 
-        // ── 12. Emit Socket.io event to all watchers ───────
-        // Everyone watching this auction page gets updated INSTANTLY
+        // ── 13. Emit Socket.io event to all watchers ───────
         const io = req.app.get('io');
         if (io) {
-            // Payload broadcast to everyone in room "auction-{id}"
             io.to(`auction-${auction_id}`).emit('new-bid', {
                 auction_id: auction_id,
                 bid_id: result.insertId,
@@ -108,10 +120,11 @@ const placeBid = async (req, res) => {
                 new_price: Number(amount),
                 total_bids: auction.total_bids + 1,
                 auction_won: auctionWon,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                sniped: sniped,
+                new_end_time: sniped ? auction.end_time : null
             });
 
-            // Notify the outbid user separately (they can show a toast)
             if (prevWinner && prevWinner.bidder_id !== bidder_id) {
                 io.to(`auction-${auction_id}`).emit('outbid', {
                     auction_id: auction_id,
@@ -121,7 +134,6 @@ const placeBid = async (req, res) => {
                 });
             }
 
-            // If auction won via buy-now, broadcast closure
             if (auctionWon) {
                 io.to(`auction-${auction_id}`).emit('auction-closed', {
                     auction_id: auction_id,
@@ -131,12 +143,59 @@ const placeBid = async (req, res) => {
             }
         }
 
-        // ── 13. Send HTTP response ──────────────────
+        // ── 14. Auto-Bidder: check if any auto-bid should fire ──
+        // Find someone with an active auto-bid that was outbid
+        if (!auctionWon && prevWinner) {
+            const [autoBids] = await db.query(
+                `SELECT * FROM auto_bids 
+                 WHERE auction_id = ? AND user_id = ? AND is_active = TRUE AND max_amount > ?`,
+                [auction_id, prevWinner.bidder_id, amount]
+            ).catch(() => [[]]); // gracefully skip if table doesn't exist yet
+
+            if (autoBids.length > 0) {
+                const ab = autoBids[0];
+                const autoAmount = Math.min(Number(amount) + 1, Number(ab.max_amount));
+                if (autoAmount > Number(amount)) {
+                    // Fire auto-bid as a background request
+                    const io = req.app.get('io');
+                    setTimeout(async () => {
+                        try {
+                            await db.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
+                            const [autoResult] = await db.query(
+                                'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
+                                [auction_id, prevWinner.bidder_id, autoAmount]
+                            );
+                            await db.query(
+                                'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
+                                [autoAmount, auction_id]
+                            );
+                            if (io) {
+                                io.to(`auction-${auction_id}`).emit('new-bid', {
+                                    auction_id: auction_id,
+                                    bid_id: autoResult.insertId,
+                                    bidder_name: prevWinner.username + ' (Auto)',
+                                    amount: autoAmount,
+                                    new_price: autoAmount,
+                                    total_bids: auction.total_bids + 2,
+                                    auction_won: false,
+                                    timestamp: new Date().toISOString(),
+                                    is_auto: true
+                                });
+                            }
+                        } catch (e) { /* silent fail */ }
+                    }, 1500);
+                }
+            }
+        }
+
+        // ── 15. Send HTTP response ──────────────────
         res.status(201).json({
-            message: auctionWon ? '🏆 Buy Now! You won the auction!' : 'Bid placed successfully!',
+            message: auctionWon ? '🏆 Buy Now! You won the auction!' : sniped ? 'Bid placed! ⏰ Auction extended by 2 minutes (snipe protection).' : 'Bid placed successfully!',
             bid_id: result.insertId,
             new_price: Number(amount),
-            auction_won: auctionWon
+            auction_won: auctionWon,
+            sniped: sniped,
+            new_end_time: sniped ? auction.end_time : null
         });
 
     } catch (err) {

@@ -4,7 +4,7 @@ angular.module('auctionApp')
 
             $scope.menuOpen = false;
             
-            $scope.isLightMode = localStorage.getItem('theme') === 'light';
+            $scope.isLightMode = localStorage.getItem('theme') !== 'dark';
             if ($scope.isLightMode) {
                 document.body.classList.add('light-theme');
             }

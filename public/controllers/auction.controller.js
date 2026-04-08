@@ -41,8 +41,8 @@ angular.module('auctionApp')
 //  AuctionDetailController — /auctions/:id
 // ══════════════════════════════════════════════
 angular.module('auctionApp')
-    .controller('AuctionDetailController', ['$scope', '$routeParams', '$interval', 'AuctionService', 'AuthService', 'CurrencyService', 'SocketService', 'ValidationService',
-        function ($scope, $routeParams, $interval, AuctionService, AuthService, CurrencyService, SocketService, ValidationService) {
+    .controller('AuctionDetailController', ['$scope', '$routeParams', '$interval', '$http', 'AuctionService', 'AuthService', 'CurrencyService', 'SocketService', 'ValidationService',
+        function ($scope, $routeParams, $interval, $http, AuctionService, AuthService, CurrencyService, SocketService, ValidationService) {
 
             $scope.currency = CurrencyService;
 
@@ -56,6 +56,10 @@ angular.module('auctionApp')
             $scope.countdown = '';
             $scope.toastMessage = '';
             $scope.flash = false;
+            $scope.sniped = false;
+            $scope.autoBid = null;
+            $scope.autoBidMax = '';
+            $scope.showAutoBid = false;
 
             $scope.showToast = function(msg) {
                 $scope.toastMessage = msg;
@@ -108,6 +112,7 @@ angular.module('auctionApp')
                         $scope.auction = res.data.auction;
                         $scope.loading = false;
                         startCountdown();
+                        loadAutoBid();
                     })
                     .catch(function () {
                         $scope.error = 'Auction not found.';
@@ -170,12 +175,40 @@ angular.module('auctionApp')
                         $scope.bidMsg = res.data.message;
                         $scope.bidAmount = '';
                         $scope.bidding = false;
-                        // Single Source of Truth: we let the global socket emitted event mutate our local $scope models.
+                        if (res.data.sniped) {
+                            $scope.sniped = true;
+                            if (res.data.new_end_time) {
+                                $scope.auction.end_time = res.data.new_end_time;
+                            }
+                            setTimeout(function() { $scope.sniped = false; $scope.$apply(); }, 8000);
+                        }
                     })
                     .catch(function (err) {
-                        $scope.bidError = err.data.error || 'Failed to place bid.';
+                        $scope.bidError = err.data ? (err.data.error || 'Failed to place bid.') : 'Failed to place bid.';
                         $scope.bidding = false;
                     });
+            };
+
+            function loadAutoBid() {
+                if (!AuthService.isLoggedIn()) return;
+                $http.get('/api/bids/auto/' + $routeParams.id, { headers: AuthService.authHeader() })
+                    .then(function(res) { $scope.autoBid = res.data.auto_bid; });
+            }
+
+            $scope.activateAutoBid = function() {
+                if (!$scope.autoBidMax) return;
+                $http.post('/api/bids/auto', { auction_id: $scope.auction.id, max_amount: parseFloat($scope.autoBidMax) }, { headers: AuthService.authHeader() })
+                    .then(function(res) {
+                        $scope.showToast(res.data.message);
+                        $scope.autoBidMax = '';
+                        loadAutoBid();
+                    })
+                    .catch(function(err) { $scope.bidError = err.data ? err.data.error : 'Failed to activate Bid Buddy.'; });
+            };
+
+            $scope.deactivateAutoBid = function() {
+                $http.delete('/api/bids/auto/' + $routeParams.id, { headers: AuthService.authHeader() })
+                    .then(function() { $scope.autoBid = null; $scope.showToast('Bid Buddy deactivated.'); });
             };
 
             $scope.isLoggedIn = function () { return AuthService.isLoggedIn(); };
