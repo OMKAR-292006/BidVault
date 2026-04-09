@@ -1,5 +1,60 @@
 const db = require('../config/db');
 
+// ── Recursive auto-bid engine ─────────────────
+// Fires whenever someone places a bid, checks if any auto-bid should respond.
+// If two users both have auto-bids, they battle it out until one hits their max.
+async function triggerAutoBid(auction_id, last_bidder_id, current_amount, current_total_bids, io, depth = 0) {
+    if (depth > 20) return; // safety cap to prevent infinite loops
+    try {
+        const [autoBids] = await db.query(
+            `SELECT ab.*, u.username 
+             FROM auto_bids ab 
+             JOIN users u ON ab.user_id = u.id
+             WHERE ab.auction_id = ? AND ab.user_id != ? AND ab.is_active = TRUE AND ab.max_amount > ?
+             ORDER BY ab.max_amount DESC, ab.id ASC LIMIT 1`,
+            [auction_id, last_bidder_id, current_amount]
+        );
+        if (!autoBids.length) return;
+
+        const ab = autoBids[0];
+        const autoAmount = Number(current_amount) + 1;
+        if (autoAmount > Number(ab.max_amount)) return;
+
+        await db.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
+        const [autoResult] = await db.query(
+            'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
+            [auction_id, ab.user_id, autoAmount]
+        );
+        await db.query(
+            'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
+            [autoAmount, auction_id]
+        );
+
+        const newTotal = current_total_bids + 1;
+        if (io) {
+            io.to(`auction-${auction_id}`).emit('new-bid', {
+                auction_id,
+                bid_id: autoResult.insertId,
+                bidder_name: ab.username + ' 🤖',
+                amount: autoAmount,
+                new_price: autoAmount,
+                total_bids: newTotal,
+                auction_won: false,
+                timestamp: new Date().toISOString(),
+                is_auto: true
+            });
+        }
+
+        // Wait 800ms then check if the previous auto-bid user also has an auto-bid that should respond
+        setTimeout(() => {
+            triggerAutoBid(auction_id, ab.user_id, autoAmount, newTotal, io, depth + 1);
+        }, 800);
+
+    } catch (e) {
+        console.error('triggerAutoBid error:', e.message);
+    }
+}
+
 // ─────────────────────────────────────────────
 //  PLACE BID  →  POST /api/bids
 //  Body: { auction_id, amount }
@@ -130,51 +185,8 @@ const placeBid = async (req, res) => {
         }
 
         // ── 14. Auto-Bidder: check if ANY auto-bid should fire ──
-        // Find highest active auto-bid that belongs to someone else
         if (!auctionWon) {
-            const [autoBids] = await db.query(
-                `SELECT ab.*, u.username 
-                 FROM auto_bids ab 
-                 JOIN users u ON ab.user_id = u.id
-                 WHERE ab.auction_id = ? AND ab.user_id != ? AND ab.is_active = TRUE AND ab.max_amount > ?
-                 ORDER BY ab.max_amount DESC, ab.id ASC LIMIT 1`,
-                [auction_id, bidder_id, amount]
-            ).catch((err) => { console.log(err); return [[]]; }); // gracefully skip if table doesn't exist yet
-
-            if (autoBids.length > 0) {
-                const ab = autoBids[0];
-                const autoAmount = Math.min(Number(amount) + 1, Number(ab.max_amount));
-                if (autoAmount > Number(amount)) {
-                    // Fire auto-bid as a background request
-                    const io = req.app.get('io');
-                    setTimeout(async () => {
-                        try {
-                            await db.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
-                            const [autoResult] = await db.query(
-                                'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
-                                [auction_id, ab.user_id, autoAmount]
-                            );
-                            await db.query(
-                                'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
-                                [autoAmount, auction_id]
-                            );
-                            if (io) {
-                                io.to(`auction-${auction_id}`).emit('new-bid', {
-                                    auction_id: auction_id,
-                                    bid_id: autoResult.insertId,
-                                    bidder_name: ab.username + ' (Auto)',
-                                    amount: autoAmount,
-                                    new_price: autoAmount,
-                                    total_bids: auction.total_bids + 2,
-                                    auction_won: false,
-                                    timestamp: new Date().toISOString(),
-                                    is_auto: true
-                                });
-                            }
-                        } catch (e) { /* silent fail */ }
-                    }, 500); // reduced delay to make it snappier
-                }
-            }
+            triggerAutoBid(auction_id, bidder_id, Number(amount), auction.total_bids + 1, req.app.get('io'));
         }
 
         // ── 15. Send HTTP response ──────────────────
