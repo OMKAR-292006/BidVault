@@ -927,6 +927,18 @@ button {
   align-items: flex-start;
 }
 
+.detail-right {
+  position: sticky;
+  top: 90px; /* Approximately nav height + margin */
+  height: fit-content;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding-right: 8px; /* For scrollbar */
+}
+/* custom scrollbar for detail-right */
+.detail-right::-webkit-scrollbar { width: 6px; }
+.detail-right::-webkit-scrollbar-thumb { background-color: var(--border); border-radius: 4px; }
+
 .detail-img-wrap {
   position: relative;
   border-radius: var(--radius-lg);
@@ -1027,8 +1039,6 @@ button {
   border-radius: var(--radius-lg);
   padding: 1.75rem;
   margin-bottom: 1.5rem;
-  position: sticky;
-  top: calc(var(--nav-h) + 1rem);
 }
 
 .bid-panel-price-label {
