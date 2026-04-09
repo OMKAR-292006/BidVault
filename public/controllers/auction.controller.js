@@ -189,9 +189,36 @@ angular.module('auctionApp')
                         $scope.bidMsg = res.data.message;
                         $scope.bidAmount = null;
                         // Also clear DOM input
-                        var inputEl = document.querySelector('.bid-input');
+                        var inputEl = document.getElementById('bidAmountInput');
                         if (inputEl) inputEl.value = '';
                         $scope.bidding = false;
+
+                        // ── Immediately update UI without waiting for socket ──
+                        if ($scope.auction) {
+                            $scope.auction.current_price = parsedAmount;
+                            $scope.auction.total_bids = ($scope.auction.total_bids || 0) + 1;
+                        }
+                        // Add new bid to top of history
+                        var user = AuthService.getUser();
+                        $scope.bids.unshift({
+                            bidder_name: user ? user.username : 'You',
+                            amount: parsedAmount,
+                            bid_time: new Date().toISOString(),
+                            is_winning: true
+                        });
+                        // Mark all other bids as not winning
+                        for (var i = 1; i < $scope.bids.length; i++) {
+                            $scope.bids[i].is_winning = false;
+                        }
+
+                        // Also reload from server after a short delay for accuracy
+                        setTimeout(function() {
+                            loadBids();
+                            if (res.data.auction_won) {
+                                loadAuction();
+                            }
+                        }, 1000);
+
                         if (res.data.sniped) {
                             $scope.sniped = true;
                             if (res.data.new_end_time) {

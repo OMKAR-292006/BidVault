@@ -26,12 +26,14 @@ angular.module('auctionApp')
             }
         };
 
-        // Join an auction room — call when user opens an auction page
+        // Join an auction room — auto-connects if not already connected
         this.joinAuction = function (auctionId) {
-            if (socket) {
-                socket.emit('join-auction', auctionId);
-                console.log('Joined auction room:', auctionId);
+            if (!socket) {
+                socket = io();
+                console.log('⚡ Socket.io auto-connected');
             }
+            socket.emit('join-auction', auctionId);
+            console.log('Joined auction room:', auctionId);
         };
 
         // Leave an auction room — call when user navigates away
@@ -45,14 +47,16 @@ angular.module('auctionApp')
         // Listen for a socket event and run a callback inside Angular's digest cycle
         // (needed so AngularJS knows the scope changed and updates the view)
         this.on = function (eventName, callback) {
-            if (socket) {
-                socket.on(eventName, function (data) {
-                    // $rootScope.$apply wraps the callback so AngularJS re-renders
-                    $rootScope.$apply(function () {
-                        callback(data);
-                    });
-                });
+            if (!socket) {
+                socket = io();
+                console.log('⚡ Socket.io auto-connected for listener');
             }
+            socket.on(eventName, function (data) {
+                // $rootScope.$apply wraps the callback so AngularJS re-renders
+                $rootScope.$apply(function () {
+                    callback(data);
+                });
+            });
         };
 
         // Remove a listener (cleanup when controller is destroyed)
