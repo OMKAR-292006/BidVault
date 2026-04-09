@@ -1446,12 +1446,20 @@ button {
 }
 
 .live-indicator {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--success);
+  margin-top: 12px;
+}
+
+.live-dot {
   display: inline-block;
   width: 8px;
   height: 8px;
   background-color: var(--success);
   border-radius: 50%;
-  margin-left: 8px;
+  margin-right: 8px;
   animation: blink 1.5s infinite;
 }
 
