@@ -927,6 +927,13 @@ button {
   align-items: flex-start;
 }
 
+.detail-right {
+  position: sticky;
+  top: calc(var(--nav-h) + 1rem);
+  max-height: calc(100vh - var(--nav-h) - 2rem);
+  overflow-y: auto;
+}
+
 .detail-img-wrap {
   position: relative;
   border-radius: var(--radius-lg);
@@ -1027,8 +1034,6 @@ button {
   border-radius: var(--radius-lg);
   padding: 1.75rem;
   margin-bottom: 1.5rem;
-  position: sticky;
-  top: calc(var(--nav-h) + 1rem);
 }
 
 .bid-panel-price-label {
@@ -1357,8 +1362,10 @@ button {
     grid-template-columns: 1fr;
   }
 
-  .bid-panel {
+  .detail-right {
     position: static;
+    max-height: none;
+    overflow-y: visible;
   }
 
   .form-row-2,
