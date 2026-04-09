@@ -56,7 +56,6 @@ angular.module('auctionApp')
             $scope.countdown = '';
             $scope.toastMessage = '';
             $scope.flash = false;
-            $scope.sniped = false;
             $scope.autoBid = null;
             $scope.autoBidMax = '';
             $scope.showAutoBid = false;
@@ -224,13 +223,6 @@ angular.module('auctionApp')
                             }
                         }, 1000);
 
-                        if (res.data.sniped) {
-                            $scope.sniped = true;
-                            if (res.data.new_end_time) {
-                                $scope.auction.end_time = res.data.new_end_time;
-                            }
-                            setTimeout(function() { $scope.sniped = false; $scope.$apply(); }, 8000);
-                        }
                     })
                     .catch(function (err) {
                         $scope.bidError = err.data ? (err.data.error || 'Failed to place bid.') : 'Failed to place bid.';

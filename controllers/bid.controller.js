@@ -85,19 +85,7 @@ const placeBid = async (req, res) => {
             [amount, auction_id]
         );
 
-        // ── 11. SNIPE PROTECTION — extend if bid in last 2 minutes ──
-        let sniped = false;
-        const endTime = new Date(auction.end_time);
-        const now = new Date();
-        const secondsLeft = (endTime - now) / 1000;
-        if (secondsLeft <= 120 && secondsLeft > 0) {
-            const newEndTime = new Date(now.getTime() + 2 * 60 * 1000);
-            const pad = n => n.toString().padStart(2, '0');
-            const formatted = `${newEndTime.getFullYear()}-${pad(newEndTime.getMonth()+1)}-${pad(newEndTime.getDate())} ${pad(newEndTime.getHours())}:${pad(newEndTime.getMinutes())}:${pad(newEndTime.getSeconds())}`;
-            await db.query('UPDATE auction_items SET end_time = ? WHERE id = ?', [formatted, auction_id]);
-            auction.end_time = newEndTime.toISOString();
-            sniped = true;
-        }
+
 
         // ── 12. Check buy-now price hit ────────────
         let auctionWon = false;
@@ -120,9 +108,7 @@ const placeBid = async (req, res) => {
                 new_price: Number(amount),
                 total_bids: auction.total_bids + 1,
                 auction_won: auctionWon,
-                timestamp: new Date().toISOString(),
-                sniped: sniped,
-                new_end_time: sniped ? auction.end_time : null
+                timestamp: new Date().toISOString()
             });
 
             if (prevWinner && prevWinner.bidder_id !== bidder_id) {
@@ -190,12 +176,10 @@ const placeBid = async (req, res) => {
 
         // ── 15. Send HTTP response ──────────────────
         res.status(201).json({
-            message: auctionWon ? '🏆 Buy Now! You won the auction!' : sniped ? 'Bid placed! ⏰ Auction extended by 2 minutes (snipe protection).' : 'Bid placed successfully!',
+            message: auctionWon ? '🏆 Buy Now! You won the auction!' : 'Bid placed successfully!',
             bid_id: result.insertId,
             new_price: Number(amount),
-            auction_won: auctionWon,
-            sniped: sniped,
-            new_end_time: sniped ? auction.end_time : null
+            auction_won: auctionWon
         });
 
     } catch (err) {
