@@ -50,7 +50,8 @@ router.get('/auto/:auction_id', verifyToken, async (req, res) => {
         );
         res.json({ auto_bid: rows[0] || null });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch auto-bid.' });
+        // Gracefully handle if auto_bids table doesn't exist yet
+        res.json({ auto_bid: null });
     }
 });
 

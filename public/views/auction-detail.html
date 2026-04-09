@@ -92,7 +92,7 @@
                     <div class="bid-form">
                         <div class="bid-input-wrap">
                             <span class="bid-currency">₹</span>
-                            <input type="number" ng-model="bidAmount" class="bid-input" placeholder="Enter bid amount" step="1" />
+                            <input type="text" id="bidAmountInput" inputmode="decimal" ng-model="bidAmount" ng-change="bidError=''" ng-model-options="{updateOn: 'default blur', debounce: {'default': 0, 'blur': 0}}" class="bid-input" placeholder="Enter bid amount" />
                         </div>
                         <button class="btn btn-primary btn-lg btn-full" ng-click="placeBid()" ng-disabled="bidding">
                             {{ bidding ? '⏳ Placing Bid...' : '🔨 Place Bid' }}

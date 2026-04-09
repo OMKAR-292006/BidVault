@@ -49,7 +49,7 @@ angular.module('auctionApp')
             $scope.auction = null;
             $scope.bids = [];
             $scope.loading = true;
-            $scope.bidAmount = '';
+            $scope.bidAmount = null;
             $scope.bidMsg = '';
             $scope.bidError = '';
             $scope.bidding = false;
@@ -159,21 +159,38 @@ angular.module('auctionApp')
                     $scope.bidding = false;
                     return;
                 }
-                
-                const valErr = ValidationService.placeBid($scope.bidAmount, $scope.auction.current_price);
-                if (valErr) {
-                    $scope.bidError = valErr;
+
+                // Read the bid amount — try ng-model first, fall back to DOM query
+                var modelAmount = $scope.bidAmount;
+                if (modelAmount === null || modelAmount === undefined || modelAmount === '') {
+                    // Fallback: read directly from the DOM input element by unique ID
+                    var inputEl = document.getElementById('bidAmountInput');
+                    modelAmount = inputEl ? inputEl.value : '';
+                }
+
+                var parsedAmount = parseFloat(String(modelAmount).replace(/,/g, '').trim());
+
+                if (!modelAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+                    $scope.bidError = 'Please enter a bid amount.';
+                    $scope.bidding = false;
+                    return;
+                }
+                if (parsedAmount <= Number($scope.auction.current_price)) {
+                    $scope.bidError = 'Your bid must be higher than ₹' + Number($scope.auction.current_price).toFixed(2) + '.';
                     $scope.bidding = false;
                     return;
                 }
 
                 AuctionService.placeBid({
-                    auction_id: $scope.auction.id,
-                    amount: CurrencyService.toUSD(parseFloat($scope.bidAmount))
+                    auction_id: Number($scope.auction.id),
+                    amount: parsedAmount
                 })
                     .then(function (res) {
                         $scope.bidMsg = res.data.message;
-                        $scope.bidAmount = '';
+                        $scope.bidAmount = null;
+                        // Also clear DOM input
+                        var inputEl = document.querySelector('.bid-input');
+                        if (inputEl) inputEl.value = '';
                         $scope.bidding = false;
                         if (res.data.sniped) {
                             $scope.sniped = true;
@@ -257,10 +274,18 @@ angular.module('auctionApp')
                     return;
                 }
 
+                // Save imageFile BEFORE angular.copy — angular.copy strips File objects
+                const imageFile = $scope.formData.imageFile;
+
                 const payload = angular.copy($scope.formData);
                 payload.starting_price = CurrencyService.toUSD(payload.starting_price);
                 if (payload.buy_now_price) {
                     payload.buy_now_price = CurrencyService.toUSD(payload.buy_now_price);
+                }
+
+                // Reattach the real File object after angular.copy
+                if (imageFile instanceof File) {
+                    payload.imageFile = imageFile;
                 }
 
                 AuctionService.create(payload)
@@ -273,7 +298,7 @@ angular.module('auctionApp')
                         }, 1500);
                     })
                     .catch(function (err) {
-                        $scope.error = err.data.error || 'Failed to create auction.';
+                        $scope.error = (err.data && err.data.error) ? err.data.error : 'Failed to create auction.';
                         $scope.loading = false;
                     });
             };
