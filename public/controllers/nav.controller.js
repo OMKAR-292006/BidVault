@@ -32,6 +32,10 @@ angular.module('auctionApp')
                 $scope.menuOpen = !$scope.menuOpen;
             };
 
+            $scope.closeMenu = function () {
+                $scope.menuOpen = false;
+            };
+
             $scope.logout = function () {
                 AuthService.removeToken();
                 $scope.menuOpen = false;

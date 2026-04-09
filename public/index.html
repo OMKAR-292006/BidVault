@@ -46,8 +46,8 @@
                         {{ currentUser().username }}
                     </button>
                     <div class="dropdown" ng-show="menuOpen">
-                        <a href="#!/dashboard" ng-click="menuOpen=false">Dashboard</a>
-                        <a href="#!/profile" ng-click="menuOpen=false">Profile</a>
+                        <a href="#!/dashboard" ng-click="closeMenu()">Dashboard</a>
+                        <a href="#!/profile" ng-click="closeMenu()">Profile</a>
                         <hr />
                         <a href="#" ng-click="logout()">Logout</a>
                     </div>
