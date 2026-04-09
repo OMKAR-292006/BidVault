@@ -236,13 +236,21 @@ angular.module('auctionApp')
                     .then(function(res) { $scope.autoBid = res.data.auto_bid; });
             }
 
-            $scope.activateAutoBid = function() {
-                if (!$scope.autoBidMax) return;
-                $http.post('/api/bids/auto', { auction_id: $scope.auction.id, max_amount: parseFloat($scope.autoBidMax) }, { headers: AuthService.authHeader() })
+            $scope.ab = {};
+
+            $scope.activateAutoBid = function(maxVal) {
+                var amount = parseFloat(maxVal);
+                if (!amount || isNaN(amount) || amount <= 0) {
+                    $scope.bidError = 'Please enter a valid max amount.';
+                    return;
+                }
+                $http.post('/api/bids/auto', { auction_id: $scope.auction.id, max_amount: amount }, { headers: AuthService.authHeader() })
                     .then(function(res) {
                         $scope.showToast(res.data.message);
-                        $scope.autoBidMax = '';
+                        $scope.ab.max = '';
                         loadAutoBid();
+                        loadBids();
+                        setTimeout(function() { loadAuction(); $scope.$apply(); }, 1500);
                     })
                     .catch(function(err) { $scope.bidError = err.data ? err.data.error : 'Failed to activate Bid Buddy.'; });
             };
