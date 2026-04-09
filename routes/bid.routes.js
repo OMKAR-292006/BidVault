@@ -25,6 +25,40 @@ router.post('/auto', verifyToken, async (req, res) => {
              ON DUPLICATE KEY UPDATE max_amount = ?, is_active = TRUE`,
             [auction_id, req.user.id, max_amount, max_amount]
         );
+
+        // Immediately check if they are winning, if not, place a bid
+        const [currentWinner] = await db.query('SELECT bidder_id FROM bids WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
+        const isWinning = currentWinner.length > 0 && currentWinner[0].bidder_id === req.user.id;
+
+        if (!isWinning && Number(max_amount) > Number(auctions[0].current_price)) {
+            const autoAmount = Math.min(Number(auctions[0].current_price) + 1, Number(max_amount));
+            const io = req.app.get('io');
+            
+            await db.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
+            const [autoResult] = await db.query(
+                'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
+                [auction_id, req.user.id, autoAmount]
+            );
+            await db.query(
+                'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
+                [autoAmount, auction_id]
+            );
+            
+            if (io) {
+                io.to(`auction-${auction_id}`).emit('new-bid', {
+                    auction_id: auction_id,
+                    bid_id: autoResult.insertId,
+                    bidder_name: req.user.username + ' (Auto)',
+                    amount: autoAmount,
+                    new_price: autoAmount,
+                    total_bids: auctions[0].total_bids + 1,
+                    auction_won: false,
+                    timestamp: new Date().toISOString(),
+                    is_auto: true
+                });
+            }
+        }
+
         res.json({ message: `Bid Buddy activated! We'll auto-bid up to ₹${max_amount} for you.` });
     } catch (err) {
         console.error('AutoBid error:', err);

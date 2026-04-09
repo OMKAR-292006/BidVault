@@ -129,14 +129,17 @@ const placeBid = async (req, res) => {
             }
         }
 
-        // ── 14. Auto-Bidder: check if any auto-bid should fire ──
-        // Find someone with an active auto-bid that was outbid
-        if (!auctionWon && prevWinner) {
+        // ── 14. Auto-Bidder: check if ANY auto-bid should fire ──
+        // Find highest active auto-bid that belongs to someone else
+        if (!auctionWon) {
             const [autoBids] = await db.query(
-                `SELECT * FROM auto_bids 
-                 WHERE auction_id = ? AND user_id = ? AND is_active = TRUE AND max_amount > ?`,
-                [auction_id, prevWinner.bidder_id, amount]
-            ).catch(() => [[]]); // gracefully skip if table doesn't exist yet
+                `SELECT ab.*, u.username 
+                 FROM auto_bids ab 
+                 JOIN users u ON ab.user_id = u.id
+                 WHERE ab.auction_id = ? AND ab.user_id != ? AND ab.is_active = TRUE AND ab.max_amount > ?
+                 ORDER BY ab.max_amount DESC, ab.id ASC LIMIT 1`,
+                [auction_id, bidder_id, amount]
+            ).catch((err) => { console.log(err); return [[]]; }); // gracefully skip if table doesn't exist yet
 
             if (autoBids.length > 0) {
                 const ab = autoBids[0];
@@ -149,7 +152,7 @@ const placeBid = async (req, res) => {
                             await db.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
                             const [autoResult] = await db.query(
                                 'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
-                                [auction_id, prevWinner.bidder_id, autoAmount]
+                                [auction_id, ab.user_id, autoAmount]
                             );
                             await db.query(
                                 'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
@@ -159,7 +162,7 @@ const placeBid = async (req, res) => {
                                 io.to(`auction-${auction_id}`).emit('new-bid', {
                                     auction_id: auction_id,
                                     bid_id: autoResult.insertId,
-                                    bidder_name: prevWinner.username + ' (Auto)',
+                                    bidder_name: ab.username + ' (Auto)',
                                     amount: autoAmount,
                                     new_price: autoAmount,
                                     total_bids: auction.total_bids + 2,
@@ -169,7 +172,7 @@ const placeBid = async (req, res) => {
                                 });
                             }
                         } catch (e) { /* silent fail */ }
-                    }, 1500);
+                    }, 500); // reduced delay to make it snappier
                 }
             }
         }
