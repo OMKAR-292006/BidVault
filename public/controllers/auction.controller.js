@@ -78,21 +78,35 @@ angular.module('auctionApp')
             });
 
             // Listen for live events
+            // Upsert a bid row: update if same bidder exists, else add new row
+            function upsertBid(bidderName, amount, timestamp, isWinning) {
+                var existing = null;
+                for (var i = 0; i < $scope.bids.length; i++) {
+                    if ($scope.bids[i].bidder_name === bidderName) {
+                        existing = $scope.bids[i];
+                        $scope.bids.splice(i, 1); // remove old position
+                        break;
+                    }
+                }
+                var entry = existing || {};
+                entry.bidder_name = bidderName;
+                entry.amount = amount;
+                entry.bid_time = timestamp || new Date().toISOString();
+                entry.is_winning = !!isWinning;
+                $scope.bids.unshift(entry); // put at top
+                // mark all others as not winning
+                for (var j = 1; j < $scope.bids.length; j++) {
+                    $scope.bids[j].is_winning = false;
+                }
+            }
+
             SocketService.on('new-bid', function(data) {
                 if ($scope.auction) {
                     $scope.auction.current_price = data.new_price || data.amount;
                     $scope.auction.total_bids = data.total_bids || ($scope.auction.total_bids + 1);
                 }
-                $scope.bids.unshift({
-                    bidder_name: data.bidder_name || data.bidder,
-                    amount: data.amount,
-                    bid_time: data.timestamp || data.time,
-                    is_winning: true
-                });
-                for (let i = 1; i < $scope.bids.length; i++) {
-                    $scope.bids[i].is_winning = false;
-                }
-                $scope.showToast('New bid placed by ' + (data.bidder_name || data.bidder) + '!');
+                upsertBid(data.bidder_name || data.bidder, data.amount, data.timestamp || data.time, true);
+                $scope.showToast('New bid by ' + (data.bidder_name || data.bidder) + '!');
                 $scope.flashPrice();
             });
 
@@ -198,18 +212,9 @@ angular.module('auctionApp')
                             $scope.auction.current_price = parsedAmount;
                             $scope.auction.total_bids = ($scope.auction.total_bids || 0) + 1;
                         }
-                        // Add new bid to top of history
+                        // Upsert bid row for current user
                         var user = AuthService.getUser();
-                        $scope.bids.unshift({
-                            bidder_name: user ? user.username : 'You',
-                            amount: parsedAmount,
-                            bid_time: new Date().toISOString(),
-                            is_winning: true
-                        });
-                        // Mark all other bids as not winning
-                        for (var i = 1; i < $scope.bids.length; i++) {
-                            $scope.bids[i].is_winning = false;
-                        }
+                        upsertBid(user ? user.username : 'You', parsedAmount, new Date().toISOString(), true);
 
                         // Also reload from server after a short delay for accuracy
                         setTimeout(function() {

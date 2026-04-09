@@ -78,8 +78,14 @@ const getAuctionBids = async (req, res) => {
        FROM bids b
        JOIN users u ON b.bidder_id = u.id
        WHERE b.auction_id = ?
+         AND b.id IN (
+           SELECT MAX(id)
+           FROM bids
+           WHERE auction_id = ?
+           GROUP BY bidder_id
+         )
        ORDER BY b.amount DESC`,
-            [id]
+            [id, id]
         );
 
         res.json({ count: bids.length, bids });
