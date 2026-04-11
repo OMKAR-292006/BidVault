@@ -1433,7 +1433,7 @@ button {
 
   /* ── Hero ── */
   .hero {
-    padding: 2rem 1rem 1.5rem;
+    padding: 1.5rem 1rem 1rem;
     min-height: auto;
   }
 
@@ -1454,18 +1454,19 @@ button {
 
   .hero-sub {
     font-size: 0.85rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.75rem;
   }
 
   .hero-stats {
     gap: 1rem;
     flex-wrap: wrap;
-    margin-top: 1.5rem;
+    margin-top: 0;
   }
 
   .hero-actions {
     flex-direction: column;
     gap: 0.6rem;
+    margin-bottom: 1rem;
   }
 
   .hero-actions .btn {
@@ -1480,7 +1481,8 @@ button {
 
   /* ── Section ── */
   .section {
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
+    padding: 1rem 0;
   }
 
   .section-header {
