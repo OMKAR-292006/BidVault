@@ -2,16 +2,19 @@
 //  DashboardController — /dashboard
 // ══════════════════════════════════════════════
 angular.module('auctionApp')
-    .controller('DashboardController', ['$scope', 'AuctionService', 'AuthService',
-        function ($scope, AuctionService, AuthService) {
+    .controller('DashboardController', ['$scope', '$http', 'AuctionService', 'AuthService',
+        function ($scope, $http, AuctionService, AuthService) {
 
             $scope.user = AuthService.getUser();
             $scope.myAuctions = [];
             $scope.myBids = [];
             $scope.activeTab = 'auctions';
+            $scope.adminTab = 'bids';
+            $scope.adminBids = [];
+            $scope.adminAuctions = [];
+            $scope.adminUsers = [];
             $scope.loading = true;
 
-            // Load both in parallel
             AuctionService.getMyAuctions()
                 .then(function (res) { $scope.myAuctions = res.data.auctions; });
 
@@ -21,7 +24,19 @@ angular.module('auctionApp')
                     $scope.loading = false;
                 });
 
-            $scope.setTab = function (tab) { $scope.activeTab = tab; };
+            $scope.setTab = function (tab) {
+                $scope.activeTab = tab;
+                if (tab === 'admin' && $scope.user.role === 'admin') {
+                    loadAdminData();
+                }
+            };
+
+            function loadAdminData() {
+                const h = { headers: AuthService.authHeader() };
+                $http.get('/api/users/admin/bids', h).then(function(res) { $scope.adminBids = res.data.bids; });
+                $http.get('/api/users/admin/auctions', h).then(function(res) { $scope.adminAuctions = res.data.auctions; });
+                $http.get('/api/users/admin/users', h).then(function(res) { $scope.adminUsers = res.data.users; });
+            }
 
             $scope.timeLeft = function (endTime) {
                 const diff = new Date(endTime) - new Date();

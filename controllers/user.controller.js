@@ -88,3 +88,65 @@ const getMyAuctions = async (req, res) => {
 
 
 module.exports = { getProfile, updateProfile, getMyAuctions };
+
+// ─────────────────────────────────────────────
+//  ADMIN: GET ALL BIDS  →  GET /api/users/admin/bids
+// ─────────────────────────────────────────────
+const adminGetAllBids = async (req, res) => {
+    try {
+        const [bids] = await db.query(
+            `SELECT
+                b.id, b.amount, b.is_winning, b.created_at,
+                u.username AS bidder_name, u.email AS bidder_email,
+                a.id AS auction_id, a.title AS auction_title,
+                a.status AS auction_status, a.current_price
+             FROM bids b
+             JOIN users u ON b.bidder_id = u.id
+             JOIN auction_items a ON b.auction_id = a.id
+             ORDER BY b.created_at DESC`
+        );
+        res.json({ count: bids.length, bids });
+    } catch (err) {
+        console.error('AdminGetAllBids error:', err);
+        res.status(500).json({ error: 'Failed to fetch bids.' });
+    }
+};
+
+// ─────────────────────────────────────────────
+//  ADMIN: GET ALL USERS  →  GET /api/users/admin/users
+// ─────────────────────────────────────────────
+const adminGetAllUsers = async (req, res) => {
+    try {
+        const [users] = await db.query(
+            `SELECT id, username, email, full_name, phone, role, is_active, created_at
+             FROM users ORDER BY created_at DESC`
+        );
+        res.json({ count: users.length, users });
+    } catch (err) {
+        console.error('AdminGetAllUsers error:', err);
+        res.status(500).json({ error: 'Failed to fetch users.' });
+    }
+};
+
+// ─────────────────────────────────────────────
+//  ADMIN: GET ALL AUCTIONS  →  GET /api/users/admin/auctions
+// ─────────────────────────────────────────────
+const adminGetAllAuctions = async (req, res) => {
+    try {
+        const [auctions] = await db.query(
+            `SELECT a.id, a.title, a.status, a.current_price, a.total_bids,
+                    a.start_time, a.end_time, a.created_at,
+                    u.username AS seller_name, c.name AS category_name
+             FROM auction_items a
+             JOIN users u ON a.seller_id = u.id
+             JOIN categories c ON a.category_id = c.id
+             ORDER BY a.created_at DESC`
+        );
+        res.json({ count: auctions.length, auctions });
+    } catch (err) {
+        console.error('AdminGetAllAuctions error:', err);
+        res.status(500).json({ error: 'Failed to fetch auctions.' });
+    }
+};
+
+module.exports = { getProfile, updateProfile, getMyAuctions, adminGetAllBids, adminGetAllUsers, adminGetAllAuctions };

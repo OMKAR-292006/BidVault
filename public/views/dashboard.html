@@ -15,6 +15,9 @@
         <button class="tab-btn" ng-class="{active: activeTab==='bids'}" ng-click="setTab('bids')">
             My Bids <span class="tab-count" ng-if="myBids.length">{{myBids.length}}</span>
         </button>
+        <button class="tab-btn admin-tab" ng-if="user.role === 'admin'" ng-class="{active: activeTab==='admin'}" ng-click="setTab('admin')">
+            🛡 Admin Panel
+        </button>
     </div>
 
     <div ng-if="loading" class="loading-state">
@@ -83,4 +86,91 @@
             </table>
         </div>
     </div>
+
+    <!-- Admin Panel Tab -->
+    <div ng-if="!loading && activeTab==='admin' && user.role === 'admin'">
+
+        <!-- Admin sub-tabs -->
+        <div class="tabs" style="margin-bottom:1.5rem;">
+            <button class="tab-btn" ng-class="{active: adminTab==='bids'}" ng-click="adminTab='bids'">All Bids ({{adminBids.length}})</button>
+            <button class="tab-btn" ng-class="{active: adminTab==='auctions'}" ng-click="adminTab='auctions'">All Auctions ({{adminAuctions.length}})</button>
+            <button class="tab-btn" ng-class="{active: adminTab==='users'}" ng-click="adminTab='users'">All Users ({{adminUsers.length}})</button>
+        </div>
+
+        <!-- All Bids -->
+        <div ng-if="adminTab==='bids'">
+            <div class="table-wrap">
+                <table class="data-table">
+                    <tr>
+                        <th>Bidder</th>
+                        <th>Email</th>
+                        <th>Auction</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                    <tr ng-repeat="b in adminBids" ng-class="{'row-winning': b.is_winning}">
+                        <td>{{b.bidder_name}}</td>
+                        <td>{{b.bidder_email}}</td>
+                        <td class="td-title"><a href="#!/auctions/{{b.auction_id}}">{{b.auction_title}}</a></td>
+                        <td class="td-price">{{b.amount | localCurrency}}</td>
+                        <td>
+                            <span ng-if="b.is_winning" class="badge-status status-active">Winning</span>
+                            <span ng-if="!b.is_winning" class="badge-status status-cancelled">Outbid</span>
+                        </td>
+                        <td>{{b.created_at | date:'medium'}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- All Auctions -->
+        <div ng-if="adminTab==='auctions'">
+            <div class="table-wrap">
+                <table class="data-table">
+                    <tr>
+                        <th>Title</th>
+                        <th>Seller</th>
+                        <th>Category</th>
+                        <th>Current Price</th>
+                        <th>Bids</th>
+                        <th>Status</th>
+                        <th>Ends</th>
+                    </tr>
+                    <tr ng-repeat="a in adminAuctions">
+                        <td class="td-title"><a href="#!/auctions/{{a.id}}">{{a.title}}</a></td>
+                        <td>{{a.seller_name}}</td>
+                        <td>{{a.category_name}}</td>
+                        <td class="td-price">{{a.current_price | localCurrency}}</td>
+                        <td>{{a.total_bids}}</td>
+                        <td><span class="badge-status status-{{a.status}}">{{a.status}}</span></td>
+                        <td>{{a.end_time | date:'mediumDate'}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- All Users -->
+        <div ng-if="adminTab==='users'">
+            <div class="table-wrap">
+                <table class="data-table">
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                    </tr>
+                    <tr ng-repeat="u in adminUsers">
+                        <td>{{u.username}}</td>
+                        <td>{{u.email}}</td>
+                        <td>{{u.phone || '—'}}</td>
+                        <td><span class="badge-status" ng-class="u.role === 'admin' ? 'status-active' : 'status-upcoming'">{{u.role}}</span></td>
+                        <td>{{u.created_at | date:'mediumDate'}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div>
