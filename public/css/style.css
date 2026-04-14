@@ -1761,3 +1761,23 @@ body.light-theme .navbar {
   color: var(--accent) !important;
   border-color: var(--accent) !important;
 }
+
+/* ── Logo ─────────────────────────────────── */
+.nav-logo {
+  height: 36px;
+  width: auto;
+  display: block;
+}
+
+.auth-logo {
+  height: 80px;
+  width: auto;
+  display: block;
+  margin: 0 auto 1rem;
+}
+
+@media (max-width: 600px) {
+  .nav-logo {
+    height: 28px;
+  }
+}
