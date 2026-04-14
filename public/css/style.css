@@ -787,8 +787,12 @@ button {
   font-family: var(--font-display);
   font-size: 22px;
   letter-spacing: 3px;
-  color: var(--accent);
+  color: var(--text);
   margin-bottom: 1.5rem;
+}
+
+.auth-brand span {
+  color: var(--accent);
 }
 
 .auth-title {
