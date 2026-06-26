@@ -37,10 +37,46 @@
                 <a href="#!/login" class="btn btn-ghost">Login</a>
                 <a href="#!/register" class="btn btn-primary">Register</a>
             </div>
+
             <div ng-if="isLoggedIn()" class="nav-user">
                 <a href="#!/create-auction" class="btn btn-primary">+ List Item</a>
+
+                <!-- ── Notification Bell ── -->
+                <div class="notif-wrap">
+                    <button class="notif-btn" ng-click="toggleNotif()" id="notif-bell-btn" title="Notifications">
+                        🔔
+                        <span class="notif-badge" ng-if="unreadCount > 0">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+                    </button>
+
+                    <div class="notif-dropdown" ng-show="notifOpen">
+                        <div class="notif-header">
+                            <span class="notif-title">Notifications</span>
+                            <button class="notif-mark-all" ng-click="markAllRead()" ng-if="unreadCount > 0">Mark all read</button>
+                        </div>
+
+                        <div class="notif-empty" ng-if="notifications.length === 0">
+                            <span>🔔</span>
+                            <p>No notifications yet</p>
+                        </div>
+
+                        <div class="notif-list" ng-if="notifications.length > 0">
+                            <div class="notif-item" ng-repeat="n in notifications | limitTo:10"
+                                ng-class="{'notif-unread': !n.is_read}"
+                                ng-click="markRead(n)">
+                                <div class="notif-icon">{{ notifIcon(n.type) }}</div>
+                                <div class="notif-body">
+                                    <p class="notif-msg">{{ n.message }}</p>
+                                    <span class="notif-time">{{ n.created_at | date:'MMM d, h:mm a' }}</span>
+                                    <a ng-if="n.auction_id" href="#!/auctions/{{n.auction_id}}" class="notif-link" ng-click="closeNotif()">View Auction →</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── User Menu ── -->
                 <div class="user-menu">
-                    <button class="user-btn" ng-click="toggleMenu()">
+                    <button class="user-btn" ng-click="toggleMenu()" id="user-menu-btn">
                         <span class="avatar">{{ currentUser().username[0].toUpperCase() }}</span>
                         {{ currentUser().username }}
                     </button>
@@ -76,6 +112,8 @@
     <script src="services/socket.service.js"></script>
     <script src="services/validation.service.js"></script>
     <script src="services/currency.service.js"></script>
+    <script src="services/watchlist.service.js"></script>
+    <script src="services/notification.service.js"></script>
 
     <!-- Controllers after -->
     <script src="controllers/nav.controller.js"></script>

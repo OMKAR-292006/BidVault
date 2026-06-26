@@ -2,12 +2,13 @@
 //  DashboardController — /dashboard
 // ══════════════════════════════════════════════
 angular.module('auctionApp')
-    .controller('DashboardController', ['$scope', '$http', 'AuctionService', 'AuthService',
-        function ($scope, $http, AuctionService, AuthService) {
+    .controller('DashboardController', ['$scope', '$http', 'AuctionService', 'AuthService', 'WatchlistService',
+        function ($scope, $http, AuctionService, AuthService, WatchlistService) {
 
             $scope.user = AuthService.getUser();
             $scope.myAuctions = [];
             $scope.myBids = [];
+            $scope.watchlist = [];
             $scope.activeTab = 'auctions';
             $scope.adminTab = 'bids';
             $scope.adminBids = [];
@@ -29,6 +30,21 @@ angular.module('auctionApp')
                 if (tab === 'admin' && $scope.user.role === 'admin') {
                     loadAdminData();
                 }
+                if (tab === 'watchlist') {
+                    loadWatchlist();
+                }
+            };
+
+            function loadWatchlist() {
+                WatchlistService.getAll().then(function (res) {
+                    $scope.watchlist = res.data.watchlist;
+                });
+            }
+
+            $scope.removeWatch = function (auctionId) {
+                WatchlistService.remove(auctionId).then(function () {
+                    $scope.watchlist = $scope.watchlist.filter(function (w) { return w.id !== auctionId; });
+                });
             };
 
             function loadAdminData() {
@@ -56,6 +72,7 @@ angular.module('auctionApp')
             };
 
         }]);
+
 
 
 // ══════════════════════════════════════════════

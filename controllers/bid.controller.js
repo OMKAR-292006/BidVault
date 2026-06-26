@@ -5,32 +5,63 @@ const db = require('../config/db');
 // If two users both have auto-bids, they battle it out until one hits their max.
 async function triggerAutoBid(auction_id, last_bidder_id, current_amount, current_total_bids, io, depth = 0) {
     if (depth > 20) return; // safety cap to prevent infinite loops
+    let connection;
     try {
-        const [autoBids] = await db.query(
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // 1. Fetch latest state of auction & lock the row
+        const [auctions] = await connection.query(
+            'SELECT current_price, total_bids, status FROM auction_items WHERE id = ? FOR UPDATE',
+            [auction_id]
+        );
+        if (!auctions.length || auctions[0].status !== 'active') {
+            await connection.commit();
+            connection.release();
+            return;
+        }
+
+        const auction = auctions[0];
+        const actualCurrentPrice = Number(auction.current_price);
+
+        // 2. Fetch the best active auto bid that exceeds current price
+        const [autoBids] = await connection.query(
             `SELECT ab.*, u.username 
              FROM auto_bids ab 
              JOIN users u ON ab.user_id = u.id
              WHERE ab.auction_id = ? AND ab.user_id != ? AND ab.is_active = TRUE AND ab.max_amount > ?
              ORDER BY ab.max_amount DESC, ab.id ASC LIMIT 1`,
-            [auction_id, last_bidder_id, current_amount]
+            [auction_id, last_bidder_id, actualCurrentPrice]
         );
-        if (!autoBids.length) return;
+        if (!autoBids.length) {
+            await connection.commit();
+            connection.release();
+            return;
+        }
 
         const ab = autoBids[0];
-        const autoAmount = Number(current_amount) + 1;
-        if (autoAmount > Number(ab.max_amount)) return;
+        const autoAmount = Number(actualCurrentPrice) + 1;
+        if (autoAmount > Number(ab.max_amount)) {
+            await connection.commit();
+            connection.release();
+            return;
+        }
 
-        await db.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
-        const [autoResult] = await db.query(
+        // 3. Perform atomic updates for auto bid
+        await connection.query('UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE', [auction_id]);
+        const [autoResult] = await connection.query(
             'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
             [auction_id, ab.user_id, autoAmount]
         );
-        await db.query(
+        await connection.query(
             'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
             [autoAmount, auction_id]
         );
 
-        const newTotal = current_total_bids + 1;
+        await connection.commit();
+        connection.release();
+
+        const newTotal = Number(auction.total_bids) + 1;
         if (io) {
             io.to(`auction-${auction_id}`).emit('new-bid', {
                 auction_id,
@@ -51,6 +82,10 @@ async function triggerAutoBid(auction_id, last_bidder_id, current_amount, curren
         }, 800);
 
     } catch (e) {
+        if (connection) {
+            await connection.rollback();
+            connection.release();
+        }
         console.error('triggerAutoBid error:', e.message);
     }
 }
@@ -61,6 +96,7 @@ async function triggerAutoBid(auction_id, last_bidder_id, current_amount, curren
 //  Requires login (verifyToken middleware)
 // ─────────────────────────────────────────────
 const placeBid = async (req, res) => {
+    let connection;
     try {
         const { auction_id, amount } = req.body;
         const bidder_id = req.user.id;
@@ -73,18 +109,25 @@ const placeBid = async (req, res) => {
             return res.status(400).json({ error: 'Amount must be a positive number.' });
         }
 
-        // ── 2. Fetch auction ───────────────────────
-        const [auctions] = await db.query(
-            'SELECT * FROM auction_items WHERE id = ?',
+        connection = await db.getConnection();
+        await connection.beginTransaction();
+
+        // ── 2. Fetch and lock the auction ───────────
+        const [auctions] = await connection.query(
+            'SELECT * FROM auction_items WHERE id = ? FOR UPDATE',
             [auction_id]
         );
         if (auctions.length === 0) {
+            await connection.commit();
+            connection.release();
             return res.status(404).json({ error: 'Auction not found.' });
         }
         const auction = auctions[0];
 
         // ── 3. Auction must be active ──────────────
         if (auction.status !== 'active') {
+            await connection.commit();
+            connection.release();
             return res.status(400).json({
                 error: `Auction is "${auction.status}". Bidding not allowed.`
             });
@@ -92,67 +135,89 @@ const placeBid = async (req, res) => {
 
         // ── 4. Check auction hasn't expired ────────
         if (new Date() > new Date(auction.end_time)) {
-            await db.query(
+            await connection.query(
                 "UPDATE auction_items SET status = 'closed' WHERE id = ?",
                 [auction_id]
             );
+            await connection.commit();
+            connection.release();
             return res.status(400).json({ error: 'This auction has already ended.' });
         }
 
         // ── 5. Seller cannot bid on own auction ────
         if (auction.seller_id === bidder_id) {
+            await connection.commit();
+            connection.release();
             return res.status(403).json({ error: 'You cannot bid on your own auction.' });
         }
 
         // ── 6. Bid must beat current price ─────────
         if (Number(amount) <= Number(auction.current_price)) {
+            await connection.commit();
+            connection.release();
             return res.status(400).json({
                 error: `Your bid must be higher than the current price of ₹${auction.current_price}.`
             });
         }
 
         // ── 7. Get previous highest bidder (for outbid notification) ──
-        const [prevWinners] = await db.query(
+        const [prevWinners] = await connection.query(
             `SELECT b.bidder_id, u.username
-       FROM bids b
-       JOIN users u ON b.bidder_id = u.id
-       WHERE b.auction_id = ? AND b.is_winning = TRUE
-       LIMIT 1`,
+             FROM bids b
+             JOIN users u ON b.bidder_id = u.id
+             WHERE b.auction_id = ? AND b.is_winning = TRUE
+             LIMIT 1`,
             [auction_id]
         );
         const prevWinner = prevWinners[0] || null;
 
         // ── 8. Mark previous winning bid as not winning ────
-        await db.query(
+        await connection.query(
             'UPDATE bids SET is_winning = FALSE WHERE auction_id = ? AND is_winning = TRUE',
             [auction_id]
         );
 
         // ── 9. Insert new bid ──────────────────────
-        const [result] = await db.query(
+        const [result] = await connection.query(
             'INSERT INTO bids (auction_id, bidder_id, amount, is_winning) VALUES (?, ?, ?, TRUE)',
             [auction_id, bidder_id, amount]
         );
 
         // ── 10. Update auction current price + bid count ───
-        await db.query(
+        await connection.query(
             'UPDATE auction_items SET current_price = ?, total_bids = total_bids + 1 WHERE id = ?',
             [amount, auction_id]
         );
 
+        // ── 11. Persist outbid notification in DB for previous winner ──
+        if (prevWinner && prevWinner.bidder_id !== bidder_id) {
+            await connection.query(
+                `INSERT INTO notifications (user_id, auction_id, type, message)
+                 VALUES (?, ?, 'outbid', ?)`,
+                [
+                    prevWinner.bidder_id,
+                    auction_id,
+                    `You've been outbid on "${auction.title}"! New price: ₹${Number(amount).toFixed(2)}`
+                ]
+            );
+        }
 
-
-        // ── 12. Check buy-now price hit ────────────
+        // ── 11. Check buy-now price hit ────────────
         let auctionWon = false;
         if (auction.buy_now_price && Number(amount) >= Number(auction.buy_now_price)) {
-            await db.query(
+            await connection.query(
                 "UPDATE auction_items SET status = 'closed', winner_id = ? WHERE id = ?",
                 [bidder_id, auction_id]
             );
             auctionWon = true;
         }
 
-        // ── 13. Emit Socket.io event to all watchers ───────
+        // Commit transaction and release connection
+        await connection.commit();
+        connection.release();
+        connection = null; // Mark as closed
+
+        // ── 12. Emit Socket.io event to all watchers ───────
         const io = req.app.get('io');
         if (io) {
             io.to(`auction-${auction_id}`).emit('new-bid', {
@@ -184,12 +249,12 @@ const placeBid = async (req, res) => {
             }
         }
 
-        // ── 14. Auto-Bidder: check if ANY auto-bid should fire ──
+        // ── 13. Auto-Bidder: check if ANY auto-bid should fire ──
         if (!auctionWon) {
             triggerAutoBid(auction_id, bidder_id, Number(amount), auction.total_bids + 1, req.app.get('io'));
         }
 
-        // ── 15. Send HTTP response ──────────────────
+        // ── 14. Send HTTP response ──────────────────
         res.status(201).json({
             message: auctionWon ? '🏆 Buy Now! You won the auction!' : 'Bid placed successfully!',
             bid_id: result.insertId,
@@ -198,6 +263,10 @@ const placeBid = async (req, res) => {
         });
 
     } catch (err) {
+        if (connection) {
+            await connection.rollback();
+            connection.release();
+        }
         if (err.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ error: 'You already placed this exact bid amount.' });
         }
@@ -206,7 +275,6 @@ const placeBid = async (req, res) => {
     }
 };
 
-
 // ─────────────────────────────────────────────
 //  GET MY BIDS  →  GET /api/bids/mine
 // ─────────────────────────────────────────────
@@ -214,20 +282,20 @@ const getMyBids = async (req, res) => {
     try {
         const [bids] = await db.query(
             `SELECT
-         b.id         AS bid_id,
-         b.amount,
-         b.is_winning,
-         b.created_at AS bid_time,
-         a.id         AS auction_id,
-         a.title      AS auction_title,
-         a.current_price,
-         a.end_time,
-         a.status     AS auction_status,
-         a.image_url
-       FROM bids b
-       JOIN auction_items a ON b.auction_id = a.id
-       WHERE b.bidder_id = ?
-       ORDER BY b.created_at DESC`,
+                 b.id         AS bid_id,
+                 b.amount,
+                 b.is_winning,
+                 b.created_at AS bid_time,
+                 a.id         AS auction_id,
+                 a.title      AS auction_title,
+                 a.current_price,
+                 a.end_time,
+                 a.status     AS auction_status,
+                 a.image_url
+             FROM bids b
+             JOIN auction_items a ON b.auction_id = a.id
+             WHERE b.bidder_id = ?
+             ORDER BY b.created_at DESC`,
             [req.user.id]
         );
         res.json({ count: bids.length, bids });

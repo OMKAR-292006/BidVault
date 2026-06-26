@@ -41,8 +41,8 @@ angular.module('auctionApp')
 //  AuctionDetailController — /auctions/:id
 // ══════════════════════════════════════════════
 angular.module('auctionApp')
-    .controller('AuctionDetailController', ['$scope', '$routeParams', '$interval', '$http', 'AuctionService', 'AuthService', 'CurrencyService', 'SocketService', 'ValidationService',
-        function ($scope, $routeParams, $interval, $http, AuctionService, AuthService, CurrencyService, SocketService, ValidationService) {
+    .controller('AuctionDetailController', ['$scope', '$routeParams', '$interval', '$http', 'AuctionService', 'AuthService', 'CurrencyService', 'SocketService', 'ValidationService', 'WatchlistService',
+        function ($scope, $routeParams, $interval, $http, AuctionService, AuthService, CurrencyService, SocketService, ValidationService, WatchlistService) {
 
             $scope.currency = CurrencyService;
 
@@ -59,6 +59,8 @@ angular.module('auctionApp')
             $scope.autoBid = null;
             $scope.autoBidMax = '';
             $scope.showAutoBid = false;
+            $scope.isWatching = false;
+            $scope.watchLoading = false;
 
             $scope.showToast = function(msg) {
                 $scope.toastMessage = msg;
@@ -126,6 +128,7 @@ angular.module('auctionApp')
                         $scope.loading = false;
                         startCountdown();
                         loadAutoBid();
+                        if (AuthService.isLoggedIn()) loadWatchStatus();
                     })
                     .catch(function () {
                         $scope.error = 'Auction not found.';
@@ -140,6 +143,33 @@ angular.module('auctionApp')
                         $scope.bids = res.data.bids;
                     });
             }
+
+            // Load watchlist status
+            function loadWatchStatus() {
+                WatchlistService.check($routeParams.id)
+                    .then(function (res) { $scope.isWatching = res.data.is_watching; })
+                    .catch(angular.noop);
+            }
+
+            // Toggle watch/unwatch
+            $scope.toggleWatch = function () {
+                if (!AuthService.isLoggedIn()) {
+                    $scope.bidError = 'Please login to watch this auction.';
+                    return;
+                }
+                $scope.watchLoading = true;
+                var action = $scope.isWatching
+                    ? WatchlistService.remove($routeParams.id)
+                    : WatchlistService.add($routeParams.id);
+
+                action.then(function () {
+                    $scope.isWatching = !$scope.isWatching;
+                    $scope.showToast($scope.isWatching ? '❤️ Added to Watchlist!' : '💔 Removed from Watchlist');
+                    $scope.watchLoading = false;
+                }).catch(function () {
+                    $scope.watchLoading = false;
+                });
+            };
 
             loadAuction();
             loadBids();

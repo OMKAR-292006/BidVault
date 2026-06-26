@@ -15,6 +15,9 @@
         <button class="tab-btn" ng-class="{active: activeTab==='bids'}" ng-click="setTab('bids')">
             My Bids <span class="tab-count" ng-if="myBids.length">{{myBids.length}}</span>
         </button>
+        <button class="tab-btn" ng-class="{active: activeTab==='watchlist'}" ng-click="setTab('watchlist')">
+            ❤️ Watchlist <span class="tab-count" ng-if="watchlist.length">{{watchlist.length}}</span>
+        </button>
         <button class="tab-btn admin-tab" ng-if="user.role === 'admin'" ng-class="{active: activeTab==='admin'}" ng-click="setTab('admin')">
             🛡 Admin Panel
         </button>
@@ -81,6 +84,39 @@
                     <td>
                         <span ng-if="b.is_winning" class="badge-status status-active">Winning</span>
                         <span ng-if="!b.is_winning" class="badge-status status-cancelled">Outbid</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- Watchlist Tab -->
+    <div ng-if="!loading && activeTab==='watchlist'">
+        <div ng-if="watchlist.length === 0" class="empty-state">
+            <div class="empty-icon">❤️</div>
+            <h3>Your Watchlist is Empty</h3>
+            <p>Add items to your watchlist from any auction page.</p>
+            <a href="#!/auctions" class="btn btn-primary" style="margin-top:1rem;">Browse Auctions</a>
+        </div>
+
+        <div class="table-wrap" ng-if="watchlist.length > 0">
+            <table class="data-table">
+                <tr>
+                    <th>Auction Item</th>
+                    <th>Category</th>
+                    <th>Current Price</th>
+                    <th>Time Left</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                <tr ng-repeat="w in watchlist">
+                    <td class="td-title"><a href="#!/auctions/{{w.id}}">{{w.title}}</a></td>
+                    <td>{{w.category_name}}</td>
+                    <td class="td-price">{{w.current_price | localCurrency}}</td>
+                    <td>{{timeLeft(w.end_time)}}</td>
+                    <td><span class="badge-status status-{{w.status}}">{{w.status}}</span></td>
+                    <td class="td-actions">
+                        <button ng-click="removeWatch(w.id)" class="action-btn danger">Remove</button>
                     </td>
                 </tr>
             </table>

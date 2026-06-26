@@ -4,12 +4,16 @@ const { placeBid, getMyBids } = require('../controllers/bid.controller');
 const { verifyToken } = require('../middleware/auth.middleware');
 const { validateBid } = require('../middleware/validate.middleware');
 const db = require('../config/db');
+const rateLimiter = require('../middleware/rateLimit.middleware');
 
-router.post('/', verifyToken, validateBid, placeBid);
+// Rate limits: Bids (60 per 1 minute)
+const bidLimiter = rateLimiter(60, 1 * 60 * 1000);
+
+router.post('/', verifyToken, bidLimiter, validateBid, placeBid);
 router.get('/mine', verifyToken, getMyBids);
 
 // ── Auto-Bid (Bid Buddy) ──────────────────────
-router.post('/auto', verifyToken, async (req, res) => {
+router.post('/auto', verifyToken, bidLimiter, async (req, res) => {
     try {
         const { auction_id, max_amount } = req.body;
         if (!auction_id || !max_amount) return res.status(400).json({ error: 'auction_id and max_amount required.' });

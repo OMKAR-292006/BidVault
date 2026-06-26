@@ -28,6 +28,13 @@
         <div class="detail-info-card">
             <div class="detail-category">{{ auction.category_name }}</div>
             <h1 class="detail-title">{{ auction.title }}</h1>
+
+            <!-- Watch button -->
+            <button ng-if="isLoggedIn()" class="btn-watch" ng-class="{'btn-watch-active': isWatching}" ng-click="toggleWatch()" ng-disabled="watchLoading">
+                <span ng-if="!watchLoading">{{ isWatching ? '❤️ Watching' : '🤍 Add to Watchlist' }}</span>
+                <span ng-if="watchLoading">⏳</span>
+            </button>
+
             <p class="detail-desc" ng-if="auction.description">{{ auction.description }}</p>
 
             <div class="detail-meta-grid">

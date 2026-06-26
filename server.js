@@ -8,7 +8,9 @@ const authRoutes = require('./routes/auth.routes');
 const auctionRoutes = require('./routes/auction.routes');
 const bidRoutes = require('./routes/bid.routes');
 const userRoutes = require('./routes/user.routes');
-const startAutoClose = require('./jobs/autoClose');  // ← Phase 5
+const watchlistRoutes = require('./routes/watchlist.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const startAutoClose = require('./jobs/autoClose');
 
 const app = express();
 const server = http.createServer(app);
@@ -37,6 +39,14 @@ io.on('connection', (socket) => {
 });
 
 // ── Middleware ─────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'no-referrer-when-downgrade');
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
@@ -46,6 +56,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/auctions', auctionRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/watchlist', watchlistRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ── Health check ──────────────────────────────────────────
 app.get('/api/health', (req, res) => {

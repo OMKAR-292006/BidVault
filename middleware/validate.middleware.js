@@ -82,7 +82,7 @@ const validateRegister = validate({
     username: { required: true, minLength: 3, maxLength: 50, alphanumeric: true, noSpaces: true },
     email: { required: true, isEmail: true },
     password: { required: true, minLength: 6, maxLength: 100 },
-    role: { enum: ['buyer', 'seller', 'admin'] }
+    role: { enum: ['buyer', 'seller'] }
 });
 
 const validateLogin = validate({
@@ -94,6 +94,8 @@ const validateAuction = validate({
     title: { required: true, minLength: 3, maxLength: 200 },
     category_id: { required: true, isNumber: true, min: 1 },
     starting_price: { required: true, isNumber: true, min: 1 },
+    reserve_price: { isNumber: true, min: 0 },
+    buy_now_price: { isNumber: true, min: 0 },
     start_time: { required: true, isDate: true },
     end_time: { required: true, isDate: true }
 });

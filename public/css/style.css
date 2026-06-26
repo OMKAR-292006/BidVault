@@ -1783,3 +1783,220 @@ body.light-theme .navbar {
     height: 32px;
   }
 }
+
+/* ── Notification Bell ────────────────────── */
+.notif-wrap {
+  position: relative;
+}
+
+.notif-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.notif-btn:hover { border-color: var(--accent); }
+
+.notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--bg);
+  animation: pulse 2s infinite;
+}
+
+.notif-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 340px;
+  max-height: 480px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 200;
+}
+
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.notif-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.notif-mark-all {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.notif-mark-all:hover { text-decoration: underline; }
+
+.notif-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notif-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notif-item:hover { background: var(--bg2); }
+
+.notif-unread {
+  background: rgba(240, 165, 0, 0.06);
+  border-left: 3px solid var(--accent);
+}
+
+.notif-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notif-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.notif-msg {
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.notif-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.notif-link {
+  font-size: 12px;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.notif-link:hover { text-decoration: underline; }
+
+.notif-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 2.5rem;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.notif-empty span { font-size: 2rem; }
+
+/* ── Watch Button ─────────────────────────── */
+.btn-watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+
+.btn-watch:hover {
+  border-color: #e05050;
+  color: #e05050;
+}
+
+.btn-watch-active {
+  border-color: #e05050 !important;
+  color: #e05050 !important;
+  background: rgba(224, 80, 80, 0.1);
+}
+
+.btn-watch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Toast notifications ──────────────────── */
+.toast-container {
+  position: fixed;
+  top: 80px;
+  right: 1.5rem;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  animation: slideIn 0.3s ease;
+}
+
+.toast-success, .toast-info {
+  background: var(--bg3);
+  border: 1px solid var(--success);
+  color: var(--success);
+}
+
+.toast-warning, .toast-outbid {
+  background: var(--bg3);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
